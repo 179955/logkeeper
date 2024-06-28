@@ -47,6 +47,12 @@ final class LogKeeper implements LoggerAwareInterface
 
     private function compress(string $filepath): bool
     {
+        $maxCount = $this->config->getOldCount();
+        if (0 === $maxCount) {
+            \unlink($filepath);
+            return true;
+        }
+
         $dir = \dirname($filepath);
         $archivePath = Util::joinPath($dir, $this->config->getOldArchiveName());
 
@@ -54,6 +60,26 @@ final class LogKeeper implements LoggerAwareInterface
         if ($zip->open($archivePath, ZipArchive::CREATE) !== true) {
             $this->logger->warning(sprintf("Could not open zip archive '%s'.", $archivePath));
             return false;
+        }
+        $zipLen = $zip->count();
+
+        if ($maxCount > 0 && $zipLen >= $maxCount) {
+            $stats = [];
+
+            for ($i = 0; $i < $zipLen; ++$i) {
+                $stats[] = $zip->statIndex($i);
+            }
+
+            usort($stats, static function (array $a, array $b): int {
+                return $a["mtime"] <=> $b["mtime"];
+            });
+
+            while ($zipLen >= $maxCount && count($stats) > 0) {
+                $stat = array_shift($stats);
+                $zip->deleteIndex($stat["index"]);
+                $this->logger->debug(sprintf("Removed old file '%s'", $stat["name"]));
+                --$zipLen;
+            }
         }
 
         $zip->addFile($filepath, \basename($filepath));
