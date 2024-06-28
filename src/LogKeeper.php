@@ -38,7 +38,13 @@ final class LogKeeper implements LoggerAwareInterface
 
     private function listFiles(): \Generator
     {
-        foreach (\glob($this->getPat()) as $file) {
+        $pat = $this->config->getPath();
+
+        if (\is_dir($pat)) {
+            $pat = Util::joinPath($pat, "*.log");
+        }
+
+        foreach (\glob($pat) as $file) {
             if ($this->testFile($file)) {
                 yield $file;
             }
@@ -97,16 +103,6 @@ final class LogKeeper implements LoggerAwareInterface
         }
 
         return true;
-    }
-
-    private function getPat(): string
-    {
-        return $this->config->getPath();
-    }
-
-    private function getDir(): string
-    {
-        return \dirname($this->config->getPath());
     }
 
     public function setLogger(LoggerInterface $logger): void

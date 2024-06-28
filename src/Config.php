@@ -13,8 +13,6 @@ final class Config
          * Path (glob pattern) to find log files for keeping.
          *
          * Example: __DIR__ . "/logs/*.log";
-         *
-         * TODO: allow to set directory, and look for *.log files in it.
          **/
         private readonly string $path,
 

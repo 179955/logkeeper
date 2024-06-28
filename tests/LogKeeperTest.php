@@ -211,4 +211,37 @@ final class LogKeeperTest extends TestCase
         $this->assertTrue($zip->open($oldPath));
         $this->assertEquals($zip->count(), count($stats));
     }
+
+    public function testCanUseDirectoryInPath(): void
+    {
+        $stats = $this->generateLogs(
+            start: (new DateTimeImmutable('today'))->modify('-2 days'),
+            end: (new DateTimeImmutable('today'))->modify('-1 day'),
+        );
+
+        $this->assertEquals(count($stats), 2);
+
+        $config = new Config(
+            path: self::LOG_DIRECTORY,
+            timeDelta: \DateInterval::createFromDateString("1 day"),
+            oldCount: -1,
+        );
+
+        $service = new LogKeeper(
+            config: $config,
+        );
+
+        $service->run();
+
+        foreach ($stats as ['name' => $name]) {
+            $this->assertFalse(is_file(Util::joinPath(self::LOG_DIRECTORY, $name)), "The file '{$name}' was not removed");
+        }
+
+        $oldPath = Util::joinPath(self::LOG_DIRECTORY, $config->getOldPath());
+        $this->assertTrue(is_file($oldPath));
+        $zip = new ZipArchive();
+
+        $this->assertTrue($zip->open($oldPath));
+        $this->assertEquals($zip->count(), count($stats));
+    }
 }
