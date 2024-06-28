@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OneSeven9955\LogKeeper;
 
+use Generator;
 use OneSeven9955\LogKeeper\Util;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerInterface;
@@ -36,6 +37,9 @@ final class LogKeeper implements LoggerAwareInterface
         $this->logger->debug("Log keeping has been completed");
     }
 
+    /**
+     * @return Generator<int,string>
+     */
     private function listFiles(): \Generator
     {
         $pat = $this->config->getPath();
@@ -60,13 +64,34 @@ final class LogKeeper implements LoggerAwareInterface
         }
 
         $dir = \dirname($filepath);
-        $archivePath = Util::joinPath($dir, $this->config->getOldPath());
+        $oldPath = Util::joinPath($dir, $this->config->getOldPath());
+        $oldPathDir = \dirname($oldPath);
+        if (!is_dir($oldPathDir)) {
+            mkdir($oldPathDir, permissions: 0755, recursive: true);
+        }
+        $perms = \fileperms($oldPathDir);
+        if (($perms & 0700) !== 0700) {
+            chmod($oldPathDir, permissions: 0755);
+        }
 
         $zip = new ZipArchive();
-        if ($zip->open($archivePath, ZipArchive::CREATE) !== true) {
-            $this->logger->warning(sprintf("Could not open zip archive '%s'.", $archivePath));
-            return false;
+        if (($error = $zip->open($oldPath, ZipArchive::CREATE)) !== true) {
+            $errorStr = match ($error) {
+                ZipArchive::ER_INCONS => 'File already exists.',
+                ZipArchive::ER_INVAL => 'Invalid argument.',
+                ZipArchive::ER_MEMORY => 'Malloc failure.',
+                ZipArchive::ER_NOENT => 'No such file.',
+                ZipArchive::ER_NOZIP => 'Not a zip archive.',
+                ZipArchive::ER_READ => 'Read error.',
+                ZipArchive::ER_SEEK => 'Seek error.',
+                ZipArchive::ER_OPEN => 'Cant\'t open file.',
+                default => 'Unknown error.',
+            };
+
+            // TODO: replace with domain exception class
+            throw new \Exception(sprintf("Could not open zip archive '%s': %s", $oldPath, $errorStr));
         }
+
         $zipLen = $zip->count();
 
         if ($maxCount > 0 && $zipLen >= $maxCount) {

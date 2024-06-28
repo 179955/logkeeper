@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace OneSeven9955\LogKeeper;
 
-use OneSeven9955\LogKeeper\Frequency;
-
 final class Config
 {
     public function __construct(
@@ -13,7 +11,7 @@ final class Config
          * Path (glob pattern) to find log files for keeping.
          *
          * Example: __DIR__ . "/logs/*.log";
-         **/
+         */
         private readonly string $path,
 
         /**
@@ -31,9 +29,7 @@ final class Config
          * The parameter sets archive filename relative to the "path".
          *
          * Default: "old.zip"
-         *
-         * TODO: allow to pass relative path, i.e. with directory.
-         **/
+         */
         private readonly string $oldPath = "old.zip",
 
         /**
@@ -46,7 +42,7 @@ final class Config
          * If the count is 0, all old log files will be removed.
          *
          * Default: -1.
-         **/
+         */
         private readonly int $oldCount = -1,
     ) {
         if ($this->oldCount < -1) {

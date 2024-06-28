@@ -2,15 +2,11 @@
 
 declare(strict_types=1);
 
-namespace OneSeven9955\Tests;
+namespace OneSeven9955\LogKeeper\Tests;
 
-use Carbon\Carbon;
-use Carbon\CarbonPeriod;
 use OneSeven9955\LogKeeper\LogKeeper;
-use OneSeven9955\LogKeeper\Frequency;
 use OneSeven9955\LogKeeper\Config;
 use OneSeven9955\LogKeeper\Util;
-use Symfony\Component\Finder\Finder;
 use PHPUnit\Framework\TestCase;
 use ZipArchive;
 use DateTimeImmutable;
@@ -18,20 +14,42 @@ use DateInterval;
 
 final class LogKeeperTest extends TestCase
 {
-    public const LOG_DIRECTORY = __DIR__.'/Data/logs';
+    public const LOG_DIRECTORY = __DIR__.'/data/logs';
 
     protected function tearDown(): void
     {
-        $files = Finder::create()
-            ->in(self::LOG_DIRECTORY)
-            ->ignoreUnreadableDirs()
-            ->name(['*.log', '*.zip']);
+        $queue = new \SplStack();
+        $queue->push(realpath(self::LOG_DIRECTORY));
 
-        foreach ($files as $file) {
-            unlink($file->getRealPath());
+        while (!$queue->isEmpty()) {
+            $cur = $queue->pop();
+
+            $entries = scandir($cur);
+
+            $results = array_diff($entries, ['..', '.']);
+
+            if (count($results) === 0) {
+                rmdir($cur);
+                continue;
+            }
+
+            $queue->push($cur);
+
+            foreach ($results as $filename) {
+                $filepath = Util::joinPath($cur, $filename);
+
+                if (is_dir($filepath)) {
+                    $queue->push($filepath);
+                } else {
+                    unlink($filepath);
+                }
+            }
         }
     }
 
+    /**
+     * @return array<int,array{name: string, index: int, mtime: int}>
+     */
     private function generateLogs(DateTimeImmutable $start, DateTimeImmutable $end): array
     {
         if (!is_dir(self::LOG_DIRECTORY.'/sub')) {
@@ -224,6 +242,40 @@ final class LogKeeperTest extends TestCase
         $config = new Config(
             path: self::LOG_DIRECTORY,
             timeDelta: \DateInterval::createFromDateString("1 day"),
+            oldCount: -1,
+        );
+
+        $service = new LogKeeper(
+            config: $config,
+        );
+
+        $service->run();
+
+        foreach ($stats as ['name' => $name]) {
+            $this->assertFalse(is_file(Util::joinPath(self::LOG_DIRECTORY, $name)), "The file '{$name}' was not removed");
+        }
+
+        $oldPath = Util::joinPath(self::LOG_DIRECTORY, $config->getOldPath());
+        $this->assertTrue(is_file($oldPath));
+        $zip = new ZipArchive();
+
+        $this->assertTrue($zip->open($oldPath));
+        $this->assertEquals($zip->count(), count($stats));
+    }
+
+    public function testCanUseRelativeOldPath(): void
+    {
+        $stats = $this->generateLogs(
+            start: (new DateTimeImmutable('today'))->modify('-3 days'),
+            end: (new DateTimeImmutable('today'))->modify('-2 day'),
+        );
+
+        $this->assertEquals(count($stats), 2);
+
+        $config = new Config(
+            path: Util::joinPath(self::LOG_DIRECTORY, '*.log'),
+            timeDelta: \DateInterval::createFromDateString("1 day"),
+            oldPath: "1/2/3/4/old.zip",
             oldCount: -1,
         );
 
