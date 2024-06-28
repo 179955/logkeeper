@@ -54,7 +54,7 @@ final class LogKeeper implements LoggerAwareInterface
         }
 
         $dir = \dirname($filepath);
-        $archivePath = Util::joinPath($dir, $this->config->getOldArchiveName());
+        $archivePath = Util::joinPath($dir, $this->config->getOldPath());
 
         $zip = new ZipArchive();
         if ($zip->open($archivePath, ZipArchive::CREATE) !== true) {

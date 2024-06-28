@@ -36,7 +36,7 @@ final class Config
          *
          * TODO: allow to pass relative path, i.e. with directory.
          **/
-        private readonly string $oldArchiveName = "old.zip",
+        private readonly string $oldPath = "old.zip",
 
         /**
          * The parameter specifies the maximum number of log files
@@ -66,9 +66,9 @@ final class Config
         return $this->timeDelta;
     }
 
-    public function getOldArchiveName(): string
+    public function getOldPath(): string
     {
-        return $this->oldArchiveName;
+        return $this->oldPath;
     }
 
     public function getOldCount(): int

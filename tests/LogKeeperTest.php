@@ -84,7 +84,7 @@ final class LogKeeperTest extends TestCase
 
         $service->run();
 
-        $oldPath = Util::joinPath(self::LOG_DIRECTORY, $config->getOldArchiveName());
+        $oldPath = Util::joinPath(self::LOG_DIRECTORY, $config->getOldPath());
 
         $this->assertTrue(is_file($oldPath));
         $zip = new ZipArchive();
@@ -119,7 +119,7 @@ final class LogKeeperTest extends TestCase
 
         $service->run();
 
-        $oldPath = Util::joinPath(self::LOG_DIRECTORY, $config->getOldArchiveName());
+        $oldPath = Util::joinPath(self::LOG_DIRECTORY, $config->getOldPath());
 
         foreach ($keepStats as ['name' => $name]) {
             $this->assertTrue(is_file(Util::joinPath(self::LOG_DIRECTORY, $name)));
@@ -157,7 +157,7 @@ final class LogKeeperTest extends TestCase
 
         $service->run();
 
-        $oldPath = Util::joinPath(self::LOG_DIRECTORY, $config->getOldArchiveName());
+        $oldPath = Util::joinPath(self::LOG_DIRECTORY, $config->getOldPath());
 
         $this->assertTrue(is_file($oldPath));
         $zip = new ZipArchive();
@@ -203,7 +203,7 @@ final class LogKeeperTest extends TestCase
 
         $service->run();
 
-        $oldPath = Util::joinPath(self::LOG_DIRECTORY, $config->getOldArchiveName());
+        $oldPath = Util::joinPath(self::LOG_DIRECTORY, $config->getOldPath());
 
         $this->assertTrue(is_file($oldPath));
         $zip = new ZipArchive();
