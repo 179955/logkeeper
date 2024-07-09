@@ -76,20 +76,7 @@ final class LogKeeper implements LoggerAwareInterface
 
         $zip = new ZipArchive();
         if (($error = $zip->open($oldPath, ZipArchive::CREATE)) !== true) {
-            $errorStr = match ($error) {
-                ZipArchive::ER_INCONS => 'File already exists.',
-                ZipArchive::ER_INVAL => 'Invalid argument.',
-                ZipArchive::ER_MEMORY => 'Malloc failure.',
-                ZipArchive::ER_NOENT => 'No such file.',
-                ZipArchive::ER_NOZIP => 'Not a zip archive.',
-                ZipArchive::ER_READ => 'Read error.',
-                ZipArchive::ER_SEEK => 'Seek error.',
-                ZipArchive::ER_OPEN => 'Cant\'t open file.',
-                default => 'Unknown error.',
-            };
-
-            // TODO: replace with domain exception class
-            throw new \Exception(sprintf("Could not open zip archive '%s': %s", $oldPath, $errorStr));
+            throw ArchiveException::couldNotOpen($oldPath, $error);
         }
 
         $zipLen = $zip->count();
