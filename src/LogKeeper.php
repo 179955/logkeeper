@@ -30,7 +30,7 @@ final class LogKeeper implements LoggerAwareInterface
             $filetime = filemtime($filename);
 
             if ($targetDate->getTimestamp() >= $filetime) {
-                $this->compress($filename);
+                $this->rotate($filename);
             }
         }
 
@@ -55,10 +55,9 @@ final class LogKeeper implements LoggerAwareInterface
         }
     }
 
-    private function compress(string $filepath): bool
+    private function rotate(string $filepath): bool
     {
-        $maxCount = $this->config->getOldCount();
-        if (0 === $maxCount) {
+        if (0 === $this->config->getOldCount()) {
             \unlink($filepath);
             return true;
         }
@@ -79,26 +78,7 @@ final class LogKeeper implements LoggerAwareInterface
             throw ArchiveException::couldNotOpen($oldPath, $error);
         }
 
-        $zipLen = $zip->count();
-
-        if ($maxCount > 0 && $zipLen >= $maxCount) {
-            $stats = [];
-
-            for ($i = 0; $i < $zipLen; ++$i) {
-                $stats[] = $zip->statIndex($i);
-            }
-
-            usort($stats, static function (array $a, array $b): int {
-                return $a["mtime"] <=> $b["mtime"];
-            });
-
-            while ($zipLen >= $maxCount && count($stats) > 0) {
-                $stat = array_shift($stats);
-                $zip->deleteIndex($stat["index"]);
-                $this->logger->debug(sprintf("Removed old file '%s'", $stat["name"]));
-                --$zipLen;
-            }
-        }
+        $this->pruneArchive($zip);
 
         $zip->addFile($filepath, \basename($filepath));
         $zip->close();
@@ -106,6 +86,32 @@ final class LogKeeper implements LoggerAwareInterface
         \unlink($filepath);
 
         return true;
+    }
+
+    private function pruneArchive(ZipArchive $zip): void
+    {
+        $maxCount = $this->config->getOldCount();
+        $zipLen = $zip->count();
+
+        if ($maxCount <= 0 || $zipLen < $maxCount) {
+            return;
+        }
+
+        $stats = [];
+        for ($i = 0; $i < $zipLen; ++$i) {
+            $stats[] = $zip->statIndex($i);
+        }
+
+        usort($stats, static function (array $a, array $b): int {
+            return $a["mtime"] <=> $b["mtime"];
+        });
+
+        while ($zipLen >= $maxCount && count($stats) > 0) {
+            $stat = array_shift($stats);
+            $zip->deleteIndex($stat["index"]);
+            $this->logger->debug(sprintf("Removed old file '%s'", $stat["name"]));
+            --$zipLen;
+        }
     }
 
     private function testFile(string $filepath): bool
